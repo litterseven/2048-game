@@ -132,20 +132,20 @@
         
         @keyframes pop {
             0% { transform: scale(0.9); filter: brightness(1); }
-            50% { transform: scale(1.2); filter: brightness(1.3); box-shadow: 0 0 30px rgba(255,255,255,0.8); }
+            50% { transform: scale(1.15); filter: brightness(1.2); box-shadow: 0 0 20px rgba(255,255,255,0.6); }
             100% { transform: scale(1); filter: brightness(1); }
         }
 
-        /* 魔法粒子动画 */
+        /* 魔法粒子动画 - 弱化版 */
         .magic-particle {
             position: absolute;
             pointer-events: none;
             z-index: 50;
-            animation: particleBurst 0.6s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
+            animation: particleBurst 0.4s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
         }
         @keyframes particleBurst {
-            0% { transform: translate(0, 0) scale(0.5); opacity: 1; }
-            100% { transform: translate(var(--tx), var(--ty)) scale(1.5) rotate(180deg); opacity: 0; }
+            0% { transform: translate(0, 0) scale(0.5); opacity: 0.8; }
+            100% { transform: translate(var(--tx), var(--ty)) scale(1) rotate(90deg); opacity: 0; }
         }
 
         /* 交互按钮 */
@@ -156,13 +156,17 @@
             transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
             border: 2px solid rgba(255, 255, 255, 0.6);
         }
-        .btn-magic:hover {
+        .btn-magic:hover:not(:disabled) {
             transform: translateY(-3px) scale(1.05);
             box-shadow: 0 8px 25px rgba(255, 182, 193, 0.8), inset 0 2px 0 rgba(255, 255, 255, 1);
             color: #ff1493;
         }
-        .btn-magic:active {
+        .btn-magic:active:not(:disabled) {
             transform: translateY(1px) scale(0.98);
+        }
+        .btn-magic:disabled {
+            filter: grayscale(0.5);
+            opacity: 0.6;
         }
 
         /* 烟花画布 */
@@ -179,12 +183,10 @@
 </head>
 <body class="flex flex-col items-center justify-center min-h-screen p-4">
 
-    <!-- 烟花画布 -->
     <canvas id="fireworks" class="hidden"></canvas>
 
-    <!-- 专属表扬弹窗 -->
     <div id="celebrate-modal" class="hidden fixed inset-0 bg-white/60 backdrop-blur-sm flex flex-col items-center justify-center z-[110] transition-opacity duration-500">
-        <div class="glass-panel p-8 rounded-3xl text-center shadow-[0_0_80px_rgba(255,105,180,0.6)] border-4 border-white transform transition-all scale-100 animate-pop w-11/12 max-w-sm">
+        <div class="glass-panel p-8 rounded-3xl text-center shadow-[0_0_100px_rgba(255,105,180,0.8)] border-4 border-white transform transition-all scale-100 animate-pop w-11/12 max-w-sm">
             <h2 class="text-7xl mb-4 drop-shadow-lg">🎉</h2>
             <h3 id="celebrate-msg" class="text-3xl font-black magic-text mb-8 leading-tight"></h3>
             <button onclick="closeCelebration()" class="btn-magic font-black py-3 px-10 rounded-full text-xl shadow-[0_10px_20px_rgba(255,105,180,0.4)]">
@@ -193,7 +195,6 @@
         </div>
     </div>
 
-    <!-- 氛围装饰 -->
     <div class="bg-star text-2xl" style="top: 10%; left: 15%; animation-delay: 0s;">✨</div>
     <div class="bg-star text-3xl" style="top: 20%; right: 20%; animation-delay: 1s;">🌸</div>
     <div class="bg-star text-xl" style="bottom: 15%; left: 25%; animation-delay: 2s;">💖</div>
@@ -214,29 +215,34 @@
     </div>
 
     <div class="w-full max-w-[500px] flex justify-between items-center mb-6 z-10">
-        <p class="text-[#8a2be2] text-sm font-black glass-panel px-5 py-2.5 rounded-full flex items-center gap-2">
-            🌟 合并出魔法 <strong class="text-[#ff1493] text-lg">2048</strong>
+        <p class="text-[#8a2be2] text-sm font-black glass-panel px-4 py-2.5 rounded-full flex items-center gap-2">
+            🌟 合并 <strong class="text-[#ff1493] text-lg">2048</strong>
         </p>
-        <button onclick="initGame()" class="btn-magic font-black py-2.5 px-6 rounded-full text-sm">
-            🪄 重新施法
-        </button>
+        <div class="flex gap-2">
+            <button onclick="undo()" id="undo-btn" class="btn-magic font-black py-2.5 px-4 rounded-full text-sm opacity-50 cursor-not-allowed" disabled>
+                ↩️ 撤回
+            </button>
+            <button onclick="initGame()" class="btn-magic font-black py-2.5 px-4 rounded-full text-sm">
+                🪄 重来
+            </button>
+        </div>
     </div>
 
     <div class="game-container glass-panel">
         <div class="grid-container" id="grid-background">
-            <!-- 背景格子 -->
-        </div>
+            </div>
         <div class="tile-container" id="tile-container">
-            <!-- 动态生成的方块 -->
-        </div>
+            </div>
 
-        <!-- 游戏结束/复活遮罩 -->
         <div id="game-over" class="hidden absolute inset-0 bg-white/40 backdrop-blur-md flex flex-col items-center justify-center rounded-2xl z-20 border-2 border-white/60 shadow-[0_0_50px_rgba(255,105,180,0.4)]">
             <h2 class="text-6xl font-black magic-text mb-2">哎呀! 🥺</h2>
             <p class="text-[#8a2be2] font-black mb-8 text-lg bg-white/50 px-4 py-1 rounded-full">魔力耗尽了哦</p>
             <div class="flex flex-col gap-4 w-4/5">
                 <button onclick="revive()" class="bg-gradient-to-r from-[#ff69b4] to-[#9370db] hover:from-[#ff1493] hover:to-[#8a2be2] text-white font-black py-4 px-6 rounded-2xl text-lg shadow-[0_10px_20px_rgba(147,112,219,0.4)] border-2 border-white/50 transition-all active:scale-95 hover:scale-[1.02]">
                     💖 星光复活 (消除最低阶)
+                </button>
+                <button onclick="undo()" class="btn-magic font-black py-3 px-6 rounded-2xl text-lg transition-all active:scale-95">
+                    ↩️ 撤回上一步
                 </button>
                 <button onclick="initGame()" class="btn-magic font-black py-3 px-6 rounded-2xl text-lg transition-all active:scale-95">
                     🔄 重新凝聚魔力
@@ -265,6 +271,7 @@
         let score = 0;
         let bestScore = parseInt(localStorage.getItem(BEST_SCORE_KEY) || '0', 10);
         let isGameOver = false;
+        let historyStack = []; // 撤回栈
         
         // 专属表扬系统记录
         let achievedTiles = new Set();
@@ -302,6 +309,17 @@
 
         bestScoreEl.textContent = bestScore;
 
+        function updateUndoButton() {
+            const btn = document.getElementById('undo-btn');
+            if (historyStack.length > 0) {
+                btn.disabled = false;
+                btn.classList.remove('opacity-50', 'cursor-not-allowed');
+            } else {
+                btn.disabled = true;
+                btn.classList.add('opacity-50', 'cursor-not-allowed');
+            }
+        }
+
         function buildTilesFromValues(boardValues) {
             board = Array(4).fill().map(() => Array(4).fill(null));
             tiles = {};
@@ -333,7 +351,8 @@
                 score,
                 bestScore,
                 isGameOver,
-                achievedTiles: Array.from(achievedTiles)
+                achievedTiles: Array.from(achievedTiles),
+                historyStack
             };
 
             localStorage.setItem(GAME_STATE_KEY, JSON.stringify(payload));
@@ -359,6 +378,7 @@
                 bestScore = Number(savedState.bestScore) || bestScore;
                 isGameOver = Boolean(savedState.isGameOver);
                 achievedTiles = new Set(savedState.achievedTiles || []);
+                historyStack = savedState.historyStack || [];
 
                 tileContainer.innerHTML = '';
                 scoreEl.textContent = score;
@@ -370,6 +390,7 @@
                     gameOverEl.classList.add('hidden');
                 }
 
+                updateUndoButton();
                 renderBoard();
                 return true;
             } catch (error) {
@@ -386,16 +407,37 @@
             score = 0;
             isGameOver = false;
             achievedTiles.clear();
+            historyStack = [];
             tileContainer.innerHTML = '';
             scoreEl.textContent = score;
             gameOverEl.classList.add('hidden');
             
+            updateUndoButton();
             addRandomTile();
             addRandomTile();
             renderBoard();
         }
 
+        function undo() {
+            if (historyStack.length === 0) return;
+            const previousState = historyStack.pop();
+            buildTilesFromValues(previousState.board);
+            score = previousState.score;
+            scoreEl.textContent = score;
+            isGameOver = false;
+            gameOverEl.classList.add('hidden');
+            tileContainer.innerHTML = ''; // 清除旧DOM结构
+            
+            updateUndoButton();
+            renderBoard();
+            saveGameState();
+        }
+
         function revive() {
+            // 保存撤回状态
+            historyStack.push({ board: board.map(r => r.map(c => c ? c.val : null)), score: score });
+            if (historyStack.length > 20) historyStack.shift();
+
             let activeTiles = Object.values(tiles).filter(t => !t.isDeleted);
             activeTiles.sort((a, b) => a.val - b.val);
             
@@ -427,6 +469,7 @@
                 });
             }, 300);
             
+            updateUndoButton();
             renderBoard();
             saveGameState();
         }
@@ -447,7 +490,7 @@
             }
         }
 
-        // 魔法粒子特效生成
+        // 弱化版魔法粒子特效
         function createParticleBurst(c, r, emoji = '✨') {
             const containerRect = tileContainer.getBoundingClientRect();
             const gap = 12;
@@ -455,16 +498,16 @@
             const x = c * (cellSize + gap) + cellSize / 2;
             const y = r * (cellSize + gap) + cellSize / 2;
 
-            for(let i = 0; i < 6; i++) {
+            for(let i = 0; i < 2; i++) { // 减少粒子数量
                 let particle = document.createElement('div');
-                particle.className = 'magic-particle text-xl drop-shadow-[0_0_10px_rgba(255,255,255,0.8)]';
+                particle.className = 'magic-particle text-sm drop-shadow-[0_0_5px_rgba(255,255,255,0.6)]';
                 particle.innerText = Math.random() > 0.5 ? emoji : '💖';
-                particle.style.left = `${x - 14}px`;
-                particle.style.top = `${y - 14}px`;
-                particle.style.setProperty('--tx', `${(Math.random() - 0.5) * 100}px`);
-                particle.style.setProperty('--ty', `${(Math.random() - 0.5) * 100}px`);
+                particle.style.left = `${x - 10}px`;
+                particle.style.top = `${y - 10}px`;
+                particle.style.setProperty('--tx', `${(Math.random() - 0.5) * 50}px`); // 减小扩散范围
+                particle.style.setProperty('--ty', `${(Math.random() - 0.5) * 50}px`);
                 tileContainer.appendChild(particle);
-                setTimeout(() => particle.remove(), 600);
+                setTimeout(() => particle.remove(), 400);
             }
         }
 
@@ -491,7 +534,6 @@
 
                 const config = tileConfigs[t.val] || tileConfigs.super;
                 
-                // 使用纯 CSS 相对单位进行完美对齐计算，消除小数像素误差
                 el.style.transform = `translate(calc(${t.c * 100}% + ${t.c * 12}px), calc(${t.r * 100}% + ${t.r * 12}px))`;
                 
                 inner.textContent = t.val;
@@ -509,7 +551,7 @@
                 if (t.isMerged) {
                     inner.classList.add('animate-pop');
                     el.style.zIndex = '15';
-                    createParticleBurst(t.c, t.r); // 触发合并光效
+                    createParticleBurst(t.c, t.r); 
                     
                     if (t.val >= 2048 && !achievedTiles.has(t.val)) {
                         newlyAchieved = Math.max(newlyAchieved, t.val);
@@ -535,7 +577,6 @@
                 });
             }, 150);
 
-            // 分数动画
             if(score > parseInt(scoreEl.textContent)) {
                 scoreEl.style.transform = 'scale(1.3)';
                 setTimeout(() => scoreEl.style.transform = 'scale(1)', 150);
@@ -566,6 +607,7 @@
 
             let moved = false;
             let deletedThisTurn = [];
+            let stateBeforeMove = { board: board.map(r => r.map(c => c ? c.val : null)), score: score };
             
             Object.values(tiles).forEach(t => { 
                 t.isNew = false; 
@@ -624,6 +666,10 @@
             }
 
             if (moved) {
+                historyStack.push(stateBeforeMove);
+                if (historyStack.length > 20) historyStack.shift(); // 保留最近20步
+                updateUndoButton();
+
                 addRandomTile();
                 renderBoard(deletedThisTurn);
             }
@@ -678,7 +724,7 @@
 
         window.addEventListener('resize', () => renderBoard());
 
-        // --- 专属表扬与烟花系统 ---
+        // --- 放大版烟花系统 ---
         let fwCtx = null;
         let fwParticles = [];
         let fwTimer = null;
@@ -704,25 +750,25 @@
             fwCtx = fwCanvas.getContext('2d');
             fwParticles = [];
             
-            for(let i=0; i<4; i++) {
-                setTimeout(() => spawnFirework(window.innerWidth * (0.2 + Math.random()*0.6), window.innerHeight * (0.2 + Math.random()*0.4)), i * 300);
+            for(let i=0; i<6; i++) { // 增加初始烟花数量
+                setTimeout(() => spawnFirework(window.innerWidth * (0.1 + Math.random()*0.8), window.innerHeight * (0.2 + Math.random()*0.5)), i * 200);
             }
             if(!fwTimer) loopFireworks();
         }
 
         function spawnFirework(x, y) {
-            const colors = ['#ffb6c1', '#fecfef', '#e0c3fc', '#c2e9fb', '#ff69b4', '#9370db', '#ffd700'];
-            for (let i = 0; i < 100; i++) {
+            const colors = ['#ffb6c1', '#fecfef', '#e0c3fc', '#c2e9fb', '#ff69b4', '#9370db', '#ffd700', '#ff4500', '#00ff7f'];
+            for (let i = 0; i < 200; i++) { // 粒子数量翻倍
                 const angle = Math.random() * Math.PI * 2;
-                const speed = Math.random() * 10 + 2;
+                const speed = Math.random() * 15 + 3; // 速度和爆炸范围翻倍
                 fwParticles.push({
                     x: x, y: y,
                     vx: Math.cos(angle) * speed,
                     vy: Math.sin(angle) * speed,
                     color: colors[Math.floor(Math.random() * colors.length)],
                     alpha: 1,
-                    life: Math.random() * 0.015 + 0.005,
-                    size: Math.random() * 5 + 2
+                    life: Math.random() * 0.01 + 0.003, // 存在时间更长
+                    size: Math.random() * 6 + 2 // 粒子更大
                 });
             }
         }
@@ -752,7 +798,7 @@
                 fwCtx.fill();
             }
 
-            if(Math.random() < 0.06 && fwParticles.length < 200) {
+            if(Math.random() < 0.1 && fwParticles.length < 400) { // 提高持续生成率和上限
                 spawnFirework(window.innerWidth * (0.1 + Math.random()*0.8), window.innerHeight * (0.1 + Math.random()*0.6));
             }
         }
