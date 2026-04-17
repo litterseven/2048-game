@@ -256,11 +256,14 @@
         const bestScoreEl = document.getElementById('best-score');
         const gameOverEl = document.getElementById('game-over');
 
+        const BEST_SCORE_KEY = '2048-magic-best';
+        const GAME_STATE_KEY = '2048-magic-state';
+
         let board = Array(4).fill().map(() => Array(4).fill(null));
         let tiles = {}; 
         let tileIdCounter = 0;
         let score = 0;
-        let bestScore = localStorage.getItem('2048-magic-best') || 0;
+        let bestScore = parseInt(localStorage.getItem(BEST_SCORE_KEY) || '0', 10);
         let isGameOver = false;
         
         // 专属表扬系统记录
@@ -298,6 +301,83 @@
         }
 
         bestScoreEl.textContent = bestScore;
+
+        function buildTilesFromValues(boardValues) {
+            board = Array(4).fill().map(() => Array(4).fill(null));
+            tiles = {};
+            tileIdCounter = 0;
+
+            for (let r = 0; r < 4; r++) {
+                for (let c = 0; c < 4; c++) {
+                    const val = boardValues?.[r]?.[c];
+                    if (!val) continue;
+
+                    const tile = {
+                        id: tileIdCounter++,
+                        val,
+                        r,
+                        c,
+                        isNew: false,
+                        isMerged: false
+                    };
+
+                    board[r][c] = tile;
+                    tiles[tile.id] = tile;
+                }
+            }
+        }
+
+        function saveGameState() {
+            const payload = {
+                board: board.map(row => row.map(cell => cell ? cell.val : null)),
+                score,
+                bestScore,
+                isGameOver,
+                achievedTiles: Array.from(achievedTiles)
+            };
+
+            localStorage.setItem(GAME_STATE_KEY, JSON.stringify(payload));
+            localStorage.setItem(BEST_SCORE_KEY, String(bestScore));
+        }
+
+        function clearSavedGameState() {
+            localStorage.removeItem(GAME_STATE_KEY);
+        }
+
+        function loadGameState() {
+            const rawState = localStorage.getItem(GAME_STATE_KEY);
+            if (!rawState) return false;
+
+            try {
+                const savedState = JSON.parse(rawState);
+                if (!Array.isArray(savedState.board) || savedState.board.length !== 4) {
+                    return false;
+                }
+
+                buildTilesFromValues(savedState.board);
+                score = Number(savedState.score) || 0;
+                bestScore = Number(savedState.bestScore) || bestScore;
+                isGameOver = Boolean(savedState.isGameOver);
+                achievedTiles = new Set(savedState.achievedTiles || []);
+
+                tileContainer.innerHTML = '';
+                scoreEl.textContent = score;
+                bestScoreEl.textContent = bestScore;
+
+                if (isGameOver) {
+                    gameOverEl.classList.remove('hidden');
+                } else {
+                    gameOverEl.classList.add('hidden');
+                }
+
+                renderBoard();
+                return true;
+            } catch (error) {
+                console.error('读取存档失败', error);
+                clearSavedGameState();
+                return false;
+            }
+        }
 
         function initGame() {
             board = Array(4).fill().map(() => Array(4).fill(null));
@@ -348,6 +428,7 @@
             }, 300);
             
             renderBoard();
+            saveGameState();
         }
 
         function addRandomTile() {
@@ -464,7 +545,6 @@
             if (score > bestScore) {
                 bestScore = score;
                 bestScoreEl.textContent = bestScore;
-                localStorage.setItem('2048-magic-best', bestScore);
             }
 
             if (newlyAchieved >= 2048) {
@@ -477,6 +557,8 @@
                     gameOverEl.classList.remove('hidden');
                 }, 800);
             }
+
+            saveGameState();
         }
 
         function move(direction) {
@@ -683,7 +765,9 @@
             fwCanvas.classList.add('hidden');
         }
 
-        initGame();
+        if (!loadGameState()) {
+            initGame();
+        }
     </script>
 </body>
 </html>
